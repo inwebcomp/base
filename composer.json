@@ -1,0 +1,51 @@
+{
+    "name": "inweb/base",
+    "description": "InWeb base components and helpers",
+    "keywords": [
+        "framework",
+        "laravel",
+        "inweb"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Alexander Topalo",
+            "email": "inwebcomp@gmail.com"
+        }
+    ],
+    "require": {
+        "php": "^7.1.3",
+        "laravel/framework": "^5.7",
+        "spatie/once": "^2.0",
+        "cviebrock/eloquent-sluggable": "^4.6",
+        "dimsav/laravel-translatable": "^9.2",
+        "kalnoy/nestedset": "^4.3",
+        "spatie/eloquent-sortable": "3.4.4"
+    },
+    "require-dev": {
+        "barryvdh/laravel-ide-helper": "^2.5",
+        "beyondcode/laravel-dump-server": "^1.0",
+        "filp/whoops": "^2.0",
+        "fzaninotto/faker": "^1.4",
+        "mockery/mockery": "^1.0",
+        "nunomaduro/collision": "^2.0",
+        "phpunit/phpunit": "^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "InWeb\\Base\\": "src/App/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "InWeb\\Base\\Database\\Seeds\\": "src/database/seeds/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "InWeb\\Base\\AppServiceProvider"
+            ]
+        }
+    }
+}
