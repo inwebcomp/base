@@ -15,14 +15,16 @@ class Language
      */
     public function handle($request, Closure $next)
     {
-        $language = $request->route()->parameter('locale');
+        $language = $request->route()->parameter('locale') ?? request('locale');
 
-        if ($language and in_array($language, config('inweb.languages'))) {
-            \App::setLocale($language);
-        } else if ($language == config('inweb.default_language')) {
+        if ($language == config('inweb.default_language')) {
             return abort(404);
-        } else {
+        } else if ($language and in_array($language, config('inweb.languages'))) {
+            \App::setLocale($language);
+        } else if (! $language) {
             \App::setLocale(config('inweb.default_language'));
+        } else {
+            return abort(404);
         }
 
         $language = \App::getLocale();

@@ -57,6 +57,13 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->app->make(EloquentFactory::class)->load(self::$packagePath . 'src/database/factories');
         }
+
+        if (! $this->app->configurationIsCached()) {
+            $this->mergeConfigFrom(
+                self::getPackagePath() . 'config/config.php',
+                self::getPackageAlias()
+            );
+        }
     }
 
     private function registerPublishing()
