@@ -17,7 +17,10 @@ trait TranslatableSlug
 
         $model = (clone $query)->whereHas('translations', function (Builder $query) use ($slug, $locale) {
             $query->where($this->getTranslationsTable() . '.slug', $slug);
-        })->firstOrFail();
+        })->first();
+
+        if (! $model)
+            return $query->whereKey('-1');
 
         if ($model->hasTranslation($locale)) {
             $query->whereHas('translations', function (Builder $query) use ($slug, $locale) {
