@@ -32,8 +32,8 @@ trait Searchable
     public function applySearch(Builder $query, $search)
     {
         $search = str_replace(['@', '-', '+'], ['', ' ', ' '], $search);
-        $search = preg_replace('/[^\w\s\.]+/', '', $search);
-        $s = preg_replace('/\s+/', ' ', trim($search));
+        $search = preg_replace('/[^\w\s\.]+/iu', '', $search);
+        $s = preg_replace('/\s+/iu', ' ', trim($search));
         $searchQ = "";
 
         $tmp = explode(' ', $s);
