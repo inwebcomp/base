@@ -42,7 +42,7 @@ trait Searchable
 
         $tmp = explode(' ', $s);
         foreach ($tmp as $k => $word) {
-            if ($k <= 2)
+            if ($k < 2)
                 $searchQ .= "+" . $word . "*";
             else
                 $searchQ .= " " . $word . "*";
