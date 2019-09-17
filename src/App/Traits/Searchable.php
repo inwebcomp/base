@@ -72,17 +72,17 @@ trait Searchable
 
     public function applySearchLike(Builder $query, $search)
     {
-        $translationTable = $this->getTranslationsTable();
-        $localeKey = $this->getLocaleKey();
+        $newQuery = clone $query;
 
-        $query
+        $translationTable = $this->getTranslationsTable();
+
+        $newQuery
             ->select($this->getTable() . '.*')
-            ->leftJoin($translationTable, $translationTable . '.' . $this->getRelationKey(), '=', $this->getTable() . '.' . $this->getKeyName())
-            ->where($translationTable . '.' . $localeKey, $this->locale());
+            ->leftJoin($translationTable, $translationTable . '.' . $this->getRelationKey(), '=', $this->getTable() . '.' . $this->getKeyName());
 
         $columns = $this->searchableColumns();
 
-        $query->where(function ($q) use ($columns, $search, $translationTable) {
+        $newQuery->where(function ($q) use ($columns, $search, $translationTable) {
             foreach ($columns as $column) {
                 if (! $this->isTranslationAttribute($column))
                     $q->orWhere($column, 'like', $search . '%');
@@ -105,6 +105,18 @@ trait Searchable
         }
         $order .= ' )';
 
-        $query->orderByRaw($order . ' DESC');
+        $newQuery->orderByRaw($order . ' DESC');
+
+
+
+        $ids = $newQuery->pluck($this->getTable() . '.' . $this->getKeyName())->toArray();
+
+        $ids = array_unique($ids);
+
+        if (! count($ids))
+            $ids = [-1];
+
+        $query->whereIn($this->getModel()->getKeyName(), $ids);
+        $query->orderByRaw("FIELD(" . $this->getTable() . ".id, " . implode(',', $ids) . ") ASC");
     }
 }
