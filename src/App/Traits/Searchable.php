@@ -18,18 +18,22 @@ trait Searchable
      * @param string $search
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function scopeSearch(Builder $query, $search)
+    public function scopeSearch(Builder $query, $search, $type = 'fulltext')
     {
         if (is_numeric($search) && in_array($query->getModel()->getKeyType(), ['int', 'integer'])) {
             $query->where($query->getModel()->getQualifiedKeyName(), $search);
         } else {
-            $this->applySearch($query, $search);
+            if ($type == 'fulltext') {
+                $this->applySearchFulltext($query, $search);
+            } else if ($type == 'like') {
+                $this->applySearchLike($query, $search);
+            }
         }
 
         return $query;
     }
 
-    public function applySearch(Builder $query, $search)
+    public function applySearchFulltext(Builder $query, $search)
     {
         $search = str_replace(['@', '-', '+'], ['', ' ', ' '], $search);
         $search = preg_replace('/[^\w\s\.]+/iu', '', $search);
@@ -64,5 +68,43 @@ trait Searchable
 
         $query->whereIn($this->getModel()->getKeyName(), $ids);
         $query->orderByRaw("FIELD(" . $this->getTable() . ".id, " . implode(',', $ids) . ") ASC");
+    }
+
+    public function applySearchLike(Builder $query, $search)
+    {
+        $translationTable = $this->getTranslationsTable();
+        $localeKey = $this->getLocaleKey();
+
+        $query
+            ->select($this->getTable() . '.*')
+            ->leftJoin($translationTable, $translationTable . '.' . $this->getRelationKey(), '=', $this->getTable() . '.' . $this->getKeyName())
+            ->where($translationTable . '.' . $localeKey, $this->locale());
+
+        $columns = $this->searchableColumns();
+
+        $query->where(function ($q) use ($columns, $search, $translationTable) {
+            foreach ($columns as $column) {
+                if (! $this->isTranslationAttribute($column))
+                    $q->orWhere($column, 'like', $search . '%');
+                else {
+                    $q->orWhere($translationTable . '.' . $column, 'like', $search . '%');
+                }
+            }
+        });
+
+        $order = '(';
+
+        $count = count($columns);
+        foreach ($columns as $i => $column) {
+            if ($order != '(')
+                $order .= ' + ';
+
+            $percent = '(' . strlen($search) . ' / LENGTH(' . $translationTable . '.' . $column . '))';
+            $order .= "(CASE WHEN " . $translationTable . '.' . $column . " LIKE '" . $search . '%' . "' THEN " . (($count - $i) * 2) . ' * ' . $percent . ' ELSE 0 END)';
+            $order .= " + (CASE WHEN " . $translationTable . '.' . $column . " = '" . $search . "' THEN " . (($count - $i) * 3) . ' ELSE 0 END)';
+        }
+        $order .= ' )';
+
+        $query->orderByRaw($order . ' DESC');
     }
 }
