@@ -44,9 +44,11 @@ trait Searchable
                 $searchQ .= " " . $word . "*";
         }
 
+        $translationTableName = $this->getTranslationsTable();
+
         $values = \DB::select(
-            'SELECT pt.product_id
-                FROM `product_translations` pt WHERE MATCH(pt.title) AGAINST (? IN BOOLEAN MODE)',
+            'SELECT pt.' . $this->getForeignKey() . '
+                FROM `' . $translationTableName . '` pt WHERE MATCH(pt.title) AGAINST (? IN BOOLEAN MODE)',
             [$searchQ, $s, $searchQ]
         );
 
@@ -61,6 +63,6 @@ trait Searchable
             $ids = [-1];
 
         $query->whereIn($this->getModel()->getKeyName(), $ids);
-        $query->orderByRaw("FIELD(products.id, " . implode(',', $ids) . ") ASC");
+        $query->orderByRaw("FIELD(" . $this->getTable() . ".id, " . implode(',', $ids) . ") ASC");
     }
 }
