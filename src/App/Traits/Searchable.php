@@ -18,22 +18,24 @@ trait Searchable
      * @param string $search
      * @return \Illuminate\Database\Eloquent\Builder
      */
-    public function scopeSearch(Builder $query, $search, $type = 'fulltext')
+    public function scopeSearch(Builder $query, $search, $type = 'fulltext', $order = true)
     {
         if (is_numeric($search) && in_array($query->getModel()->getKeyType(), ['int', 'integer'])) {
             $query->where($query->getModel()->getQualifiedKeyName(), $search);
         } else {
             if ($type == 'fulltext') {
-                $this->applySearchFulltext($query, $search);
+                $this->applySearchFulltext($query, $search, $order);
             } else if ($type == 'like') {
-                $this->applySearchLike($query, $search);
+                $this->applySearchLike($query, $search, $order);
+            } else {
+                throw new \Exception('Order type [' . $type . '] not found');
             }
         }
 
         return $query;
     }
 
-    public function applySearchFulltext(Builder $query, $search)
+    public function applySearchFulltext(Builder $query, $search, $order = true)
     {
         $search = str_replace(['@', '-', '+'], ['', ' ', ' '], $search);
         $search = preg_replace('/[^\w\s\.]+/iu', '', $search);
@@ -67,10 +69,12 @@ trait Searchable
             $ids = [-1];
 
         $query->whereIn($this->getModel()->getKeyName(), $ids);
-        $query->orderByRaw("FIELD(" . $this->getTable() . ".id, " . implode(',', $ids) . ") ASC");
+
+        if ($order)
+            $query->orderByRaw("FIELD(" . $this->getTable() . ".id, " . implode(',', $ids) . ") ASC");
     }
 
-    public function applySearchLike(Builder $query, $search)
+    public function applySearchLike(Builder $query, $search, $order = true)
     {
         $newQuery = clone $query;
 
@@ -117,6 +121,8 @@ trait Searchable
             $ids = [-1];
 
         $query->whereIn($this->getModel()->getKeyName(), $ids);
-        $query->orderByRaw("FIELD(" . $this->getTable() . ".id, " . implode(',', $ids) . ") ASC");
+
+        if ($order)
+            $query->orderByRaw("FIELD(" . $this->getTable() . ".id, " . implode(',', $ids) . ") ASC");
     }
 }
