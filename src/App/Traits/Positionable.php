@@ -33,7 +33,6 @@ trait Positionable
      * @param array $ids [pos => id]
      *
      * @return bool
-     * @todo Emit positionsUpdate event
      */
     public static function updatePositionsById($ids)
     {
@@ -53,6 +52,7 @@ trait Positionable
         foreach ($ids as $pos => $id) {
             $q[] = "WHEN `id` = " . $id . " THEN " . $pos;
         }
+
         if ($q) {
             \DB::statement(
                 "UPDATE `{$table}` SET 
