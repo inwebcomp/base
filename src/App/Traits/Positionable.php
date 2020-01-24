@@ -57,7 +57,7 @@ trait Positionable
             \DB::statement(
                 "UPDATE `{$table}` SET 
                 `{$posColumn}` = CASE " . implode("\t", $q) . " END 
-                WHERE ID IN (" . implode(',', $ids) . ")"
+                WHERE id IN (" . implode(',', $ids) . ")"
             );
 
             $tags = $class instanceof Cacheable ? $class->cacheTagAll() : [];
