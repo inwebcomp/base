@@ -21,7 +21,7 @@ trait Positionable
 
     public static function positionColumn(Blueprint $table)
     {
-        $table->integer('position')->nullable();
+        $table->integer('position')->default(0);
     }
 
     public function orderColumnName()
