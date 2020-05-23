@@ -37,25 +37,26 @@ trait Searchable
 
     public function applySearchFulltext(Builder $query, $search, $order = true)
     {
-        $search = str_replace(['@', '-', '+'], ['', ' ', ' '], $search);
-        $search = preg_replace('/[^\w\s\.]+/iu', '', $search);
+        $search = str_replace(['@', '+'], ['', ' '], $search);
+        $search = preg_replace('/[^\w\s\.\-]+/iu', '', $search);
         $s = preg_replace('/\s+/iu', ' ', trim($search));
         $searchQ = "";
 
         $tmp = explode(' ', $s);
         foreach ($tmp as $k => $word) {
-            if ($k <= 2)
+            if ($k <= 2 and strpos($word, '-') === false)
                 $searchQ .= "+" . $word . "*";
             else
-                $searchQ .= " " . $word . "*";
+                $searchQ .= " >" . $word . "*";
         }
 
         $translationTableName = $this->getTranslationsTable();
 
         $values = \DB::select(
-            'SELECT pt.' . $this->getForeignKey() . '
-                FROM `' . $translationTableName . '` pt WHERE MATCH(pt.title) AGAINST (? IN BOOLEAN MODE)',
-            [$searchQ, $s, $searchQ]
+            'SELECT pt.' . $this->getForeignKey() . ',
+                MATCH(pt.title) AGAINST (? IN BOOLEAN MODE) as relevance
+                FROM `' . $translationTableName . '` pt WHERE MATCH(pt.title) AGAINST (? IN BOOLEAN MODE) ORDER BY relevance',
+            [$searchQ, $searchQ]
         );
 
         $ids = [];
