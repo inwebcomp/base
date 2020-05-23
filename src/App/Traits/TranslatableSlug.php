@@ -8,54 +8,34 @@ trait TranslatableSlug
 {
     /**
      * @param Builder $query
-     * @param         $slug
+     * @param $slug
      * @return Builder
      */
-
     public function scopeFindBySlug(Builder $query, $slug)
     {
         $locale = \App::getLocale();
 
-        $model = (clone $query)->whereHas('translations', function (Builder $query) use ($slug, $locale) {
-            $query->where($this->getTranslationsTable() . '.slug', $slug);
+        $translationsTable = $this->getTranslationsTable();
+
+        $model = (clone $query)->where($this->getKeyName(), '=', function (\Illuminate\Database\Query\Builder $query) use ($slug, $locale, $translationsTable) {
+            $query->select($this->getForeignKey())->from($translationsTable)->where('slug', $slug)->take(1);
         })->first();
 
         if (! $model)
             return $query->whereKey('-1');
 
         if ($model->hasTranslation($locale)) {
-            $query->whereHas('translations', function (Builder $query) use ($slug, $locale) {
-                $query->where($this->getTranslationsTable() . '.slug', $slug)
-                    ->where($this->getTranslationsTable() . '.' . $this->getLocaleKey(), $locale);
+            $query->where($this->getKeyName(), '=', function (\Illuminate\Database\Query\Builder $query) use ($slug, $locale, $translationsTable) {
+                $query->select($this->getForeignKey())
+                      ->from($translationsTable)
+                      ->where('slug', $slug)
+                      ->where($translationsTable . '.' . $this->getLocaleKey(), $locale)
+                      ->take(1);
             });
         } else {
-            $query->whereHas('translations', function (Builder $query) use ($slug, $locale) {
-                $query->where($this->getTranslationsTable() . '.slug', $slug);
-            });
+            $query->where($this->getKeyName(), '=', $model->getKey());
         }
 
         return $query;
     }
-    
-//    public function scopeFindBySlug(Builder $query, $slug)
-//    {
-//        $locale = \App::getLocale();
-//
-//        $translationsTable = app()->make($this->getTranslationModelName())->getTable();
-//
-//        $model = (clone $query)->leftJoin($translationsTable, $this->getTable() . '.' . $this->getKeyName(), '=', $translationsTable . '.' . $this->getForeignKey())->where($this->getTranslationsTable() . '.slug', $slug)->first();
-//
-//        if (! $model)
-//            return $query->whereKey('-1');
-//
-//        if ($model->hasTranslation($locale)) {
-//            $query->leftJoin($translationsTable, $this->getTable() . '.' . $this->getKeyName(), '=', $translationsTable . '.' . $this->getForeignKey())
-//                ->where($this->getTranslationsTable() . '.slug', $slug)
-//                ->where($this->getTranslationsTable() . '.' . $this->getLocaleKey(), $locale);
-//        } else {
-//            $query->leftJoin($translationsTable, $this->getTable() . '.' . $this->getKeyName(), '=', $translationsTable . '.' . $this->getForeignKey())->where($this->getTranslationsTable() . '.slug', $slug)->first();
-//        }
-//
-//        return $query;
-//    }
 }
