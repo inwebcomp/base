@@ -113,7 +113,6 @@ trait Searchable
         $newQuery->orderByRaw($order . ' DESC');
 
 
-
         $ids = $newQuery->pluck($this->getTable() . '.' . $this->getKeyName())->toArray();
 
         $ids = array_unique($ids);
