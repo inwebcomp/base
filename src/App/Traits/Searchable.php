@@ -16,7 +16,10 @@ trait Searchable
      *
      * @param \Illuminate\Database\Eloquent\Builder $query
      * @param string $search
+     * @param string $type
+     * @param bool $order
      * @return \Illuminate\Database\Eloquent\Builder
+     * @throws \Exception
      */
     public function scopeSearch(Builder $query, $search, $type = 'fulltext', $order = true)
     {
@@ -47,7 +50,7 @@ trait Searchable
             if ($k <= 2 and strpos($word, '-') === false)
                 $searchQ .= "+" . $word . "*";
             else
-                $searchQ .= " >" . $word . "*";
+                $searchQ .= " >" . trim($word, '-') . "*";
         }
 
         $translationTableName = $this->getTranslationsTable();
