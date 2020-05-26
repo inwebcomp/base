@@ -82,7 +82,7 @@ trait Searchable
     {
         $newQuery = clone $query;
 
-//        $search = addcslashes($search, '%');
+        $search = addcslashes($search, "%");
 
         $translationTable = $this->getTranslationsTable();
 
