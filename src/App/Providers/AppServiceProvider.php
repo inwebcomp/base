@@ -5,7 +5,7 @@ namespace InWeb\Base\Providers;
 use Illuminate\Database\Eloquent\Factory as EloquentFactory;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
-use InWeb\Admin\App\Http\Middleware\AdminAccess;
+use InWeb\Base\Console\PublishCommand;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->registerPublishing();
+            $this->registerCommands();
         }
     }
 
@@ -39,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
      * Register the application services.
      *
      * @return void
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
     public function register()
     {
@@ -49,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
      * Register the package resources such as routes, templates, etc.
      *
      * @return void
+     * @throws \Illuminate\Contracts\Container\BindingResolutionException
      */
     protected function registerResources()
     {
@@ -71,6 +74,13 @@ class AppServiceProvider extends ServiceProvider
         // Config
         $this->publishes([
             self::$packagePath . 'config/config.php' => config_path(self::$packageAlias . '.php'),
-        ], 'config');
+        ], ['config', 'inweb-config']);
+    }
+
+    public function registerCommands()
+    {
+        $this->commands([
+            PublishCommand::class,
+        ]);
     }
 }
