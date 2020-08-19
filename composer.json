@@ -24,7 +24,7 @@
         "spatie/once": "^2.0",
         "cviebrock/eloquent-sluggable": "^4.6",
         "dimsav/laravel-translatable": "^9.2",
-        "kalnoy/nestedset": "^4.3",
+        "kalnoy/nestedset": "^5.0",
         "spatie/eloquent-sortable": "^3.7"
     },
     "require-dev": {
