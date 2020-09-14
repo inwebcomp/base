@@ -82,6 +82,7 @@ trait Searchable
     {
         $newQuery = clone $query;
 
+        $search = preg_replace('/[^\w\s\.\-%]+/iu', '', $search);
         $search = addcslashes($search, "%");
 
         $translationTable = $this->getTranslationsTable();
