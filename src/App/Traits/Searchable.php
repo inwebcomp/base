@@ -11,6 +11,11 @@ trait Searchable
         return [];
     }
 
+    public function fulltextSearchColumn()
+    {
+        return 'title';
+    }
+
     /**
      * Apply the search query to the query.
      *
@@ -23,9 +28,13 @@ trait Searchable
      */
     public function scopeSearch(Builder $query, $search, $type = 'fulltext', $order = true)
     {
-        if (is_numeric($search) && in_array($query->getModel()->getKeyType(), ['int', 'integer'])) {
+        if (preg_match('/^\d+$/', $search) && in_array($query->getModel()->getKeyType(), ['int', 'integer'])) {
             $query->where($query->getModel()->getQualifiedKeyName(), $search);
         } else {
+//            if ($type == 'fulltext' and (strpos($search, '-') !== false or strpos($search, '.') !== false)) {
+//                $type = 'like';
+//            }
+
             if ($type == 'fulltext') {
                 $this->applySearchFulltext($query, $search, $order);
             } else if ($type == 'like') {
@@ -40,8 +49,9 @@ trait Searchable
 
     public function applySearchFulltext(Builder $query, $search, $order = true)
     {
-        $search = str_replace(['@', '+'], ['', ' '], $search);
+        $search = str_replace(['@', '+', '.', '-'], ['', ' ', ' ', ' '], $search);
         $search = preg_replace('/[^\w\s\.\-]+/iu', '', $search);
+
         $s = preg_replace('/\s+/iu', ' ', trim($search));
         $searchQ = "";
 
@@ -50,15 +60,15 @@ trait Searchable
             if ($k <= 2 and strpos($word, '-') === false)
                 $searchQ .= "+" . $word . "*";
             else
-                $searchQ .= " >" . trim($word, '-') . "*";
+                $searchQ .= ">" . trim($word, '-') . "*";
         }
 
         $translationTableName = $this->getTranslationsTable();
 
         $values = \DB::select(
             'SELECT pt.' . $this->getForeignKey() . ',
-                MATCH(pt.title) AGAINST (? IN BOOLEAN MODE) as relevance
-                FROM `' . $translationTableName . '` pt WHERE MATCH(pt.title) AGAINST (? IN BOOLEAN MODE) ORDER BY relevance',
+                MATCH(pt.' . $this->fulltextSearchColumn() . ') AGAINST (? IN BOOLEAN MODE) as relevance
+                FROM `' . $translationTableName . '` pt WHERE MATCH(pt.title) AGAINST (? IN BOOLEAN MODE) ORDER BY relevance DESC',
             [$searchQ, $searchQ]
         );
 
@@ -82,8 +92,8 @@ trait Searchable
     {
         $newQuery = clone $query;
 
-        $search = preg_replace('/[^\w\s\.\-%]+/iu', '', $search);
-        $search = addcslashes($search, "%");
+//        $search = preg_replace('/[^\w\s\.\-%]+/iu', '', $search);
+        $search = addcslashes($search, "%'");
 
         $translationTable = $this->getTranslationsTable();
 
@@ -93,12 +103,19 @@ trait Searchable
 
         $columns = $this->searchableColumns();
 
-        $newQuery->where(function ($q) use ($columns, $search, $translationTable) {
-            foreach ($columns as $column) {
-                if (! $this->isTranslationAttribute($column))
-                    $q->orWhere($column, 'like', $search . '%');
-                else {
-                    $q->orWhere($translationTable . '.' . $column, 'like', $search . '%');
+        $words = [$search];
+
+        $newQuery->where(function ($q) use ($words, $columns, $search, $translationTable) {
+            foreach ($words as $k => $word) {
+                if ($k > 10)
+                    break;
+
+                foreach ($columns as $column) {
+                    if (! $this->isTranslationAttribute($column))
+                        $q->orWhere($column, 'like', '%' . $word . '%');
+                    else {
+                        $q->orWhere($translationTable . '.' . $column, 'like', '%' . $word . '%');
+                    }
                 }
             }
         });
@@ -106,18 +123,28 @@ trait Searchable
         $order = '(';
 
         $count = count($columns);
-        foreach ($columns as $i => $column) {
-            if ($order != '(')
-                $order .= ' + ';
 
-            $percent = '(' . strlen($search) . ' / LENGTH(' . $translationTable . '.' . $column . '))';
-            $order .= "(CASE WHEN " . $translationTable . '.' . $column . " LIKE '" . $search . '%' . "' THEN " . (($count - $i) * 2) . ' * ' . $percent . ' ELSE 0 END)';
-            $order .= " + (CASE WHEN " . $translationTable . '.' . $column . " = '" . $search . "' THEN " . (($count - $i) * 3) . ' ELSE 0 END)';
+        foreach ($words as $k => $word) {
+            if ($k > 10)
+                break;
+
+            foreach ($columns as $i => $column) {
+                if ($order != '(')
+                    $order .= ' + ';
+
+                $table = '';
+
+                if ($this->isTranslationAttribute($column))
+                    $table = $translationTable . '.';
+
+                $percent = '(' . strlen($word) . ' / LENGTH(' . $table . $column . '))';
+                $order .= "(CASE WHEN " . $table . $column . " LIKE '%" . $word . '%' . "' THEN " . (($count - $i) * 2) . ' * ' . $percent . " ELSE 0 END)\n";
+                $order .= " + (CASE WHEN " . $table . $column . " = '" . $word . "' THEN " . (($count - $i) * 3) . " ELSE 0 END)\n";
+            }
         }
         $order .= ' )';
 
         $newQuery->orderByRaw($order . ' DESC');
-
 
         $ids = $newQuery->pluck($this->getTable() . '.' . $this->getKeyName())->toArray();
 
