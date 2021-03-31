@@ -16,6 +16,13 @@ trait Searchable
         return 'title';
     }
 
+    public function numericSearchableColumns()
+    {
+        return [
+            'id',
+        ];
+    }
+
     /**
      * Apply the search query to the query.
      *
@@ -29,7 +36,11 @@ trait Searchable
     public function scopeSearch(Builder $query, $search, $type = 'fulltext', $order = true)
     {
         if (preg_match('/^\d+$/', $search) && in_array($query->getModel()->getKeyType(), ['int', 'integer'])) {
-            $query->where($query->getModel()->getQualifiedKeyName(), $search);
+            $query->where(function($q) use ($search) {
+                foreach ($this->numericSearchableColumns() as $column) {
+                    $q->orWhere($column, $search);
+                }
+            });
         } else {
 //            if ($type == 'fulltext' and (strpos($search, '-') !== false or strpos($search, '.') !== false)) {
 //                $type = 'like';
