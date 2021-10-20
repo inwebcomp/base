@@ -1,0 +1,4 @@
+    public $translationModel     = '{{ translation_class }}';
+    public $translatedAttributes = [
+        {{ translatable_fields }}
+    ];

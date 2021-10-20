@@ -1,0 +1,19 @@
+<?php
+
+namespace App\Models;
+
+{{ use }}
+
+/**
+ * Class {{ class }}
+ */
+class {{ class }} extends Entity {{ interfaces }}
+{
+    {{ traits }}
+    {{ body }}
+
+    public function searchableColumns()
+    {
+        return ['id'];
+    }
+}

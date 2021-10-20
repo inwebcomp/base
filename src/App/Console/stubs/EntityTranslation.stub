@@ -1,0 +1,14 @@
+<?php
+
+namespace App\Translations;
+
+use Illuminate\Database\Eloquent\Model;
+
+class {{ class }} extends Model
+{
+    {{ traits }}public $timestamps = false;
+    {{ body }}
+    protected $fillable = [
+        {{ translatable_fields }}
+    ];
+}

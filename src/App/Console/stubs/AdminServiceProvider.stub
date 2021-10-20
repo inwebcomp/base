@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Providers;
+
+use InWeb\Admin\App\Admin;
+use InWeb\Admin\App\Events\ServingAdmin;
+use InWeb\Admin\App\Providers\AdminApplicationServiceProvider;
+
+class AdminServiceProvider extends AdminApplicationServiceProvider
+{
+    /**
+     * Bootstrap services.
+     *
+     * @return void
+     * @throws \ReflectionException
+     */
+    public function boot()
+    {
+        parent::boot();
+
+        Admin::setDefaultLocale('ru');
+
+        Admin::serving(function (ServingAdmin $event) {
+            // Admin::script('admin-dist-js', base_path('public/admin-dist/js/app.js'));
+            // Admin::style('admin-dist-css', base_path('public/admin-dist/css/app.css'));
+
+            // Admin::group('users', __('Пользователи'), 'user');
+
+            // Admin::groupedMenu();
+        });
+    }
+
+    /**
+     * Get the cards that should be listed in the Nova sidebar.
+     *
+     * @return array
+     */
+    public function tools()
+    {
+        return [
+
+        ];
+    }
+}

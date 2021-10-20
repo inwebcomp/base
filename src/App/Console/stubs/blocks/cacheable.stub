@@ -1,0 +1,33 @@
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::updated(function (Cacheable $model) {
+            static::clearCache($model);
+        });
+        static::deleted(function (Cacheable $model) {
+            static::clearCache($model);
+        });
+        static::created(function () {
+            static::clearCache();
+        });
+    }
+
+    public static function clearCache(Cacheable $model = null)
+    {
+        Cache::tags(self::cacheTagAll())->flush();
+
+        if ($model) {
+            Cache::tags($model->cacheTag())->flush();
+        }
+    }
+
+    public static function cacheTagAll()
+    {
+        return '{{ name_plural }}';
+    }
+
+    public function cacheTag()
+    {
+        return '{{ name }}:' . $this->id;
+    }

@@ -5,6 +5,7 @@ namespace InWeb\Base\Providers;
 use Illuminate\Database\Eloquent\Factory as EloquentFactory;
 use Illuminate\Routing\Router;
 use Illuminate\Support\ServiceProvider;
+use InWeb\Base\Console\ModelCommand;
 use InWeb\Base\Console\PublishCommand;
 
 class AppServiceProvider extends ServiceProvider
@@ -81,6 +82,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->commands([
             PublishCommand::class,
+            ModelCommand::class,
         ]);
     }
 }
