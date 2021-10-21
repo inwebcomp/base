@@ -9,7 +9,7 @@ namespace App\Models;
  */
 class {{ class }} extends Entity {{ interfaces }}
 {
-    {{ traits }}
+    {{ traits }}{{ casts }}
     {{ body }}
 
     public function searchableColumns()

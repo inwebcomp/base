@@ -2,6 +2,7 @@
 
 namespace InWeb\Base\Console;
 
+use App\Models\Navigation;
 use Cviebrock\EloquentSluggable\Sluggable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -12,6 +13,7 @@ use InWeb\Base\Entity;
 use InWeb\Base\Traits\ClearsRelatedModelCache;
 use InWeb\Base\Traits\Positionable;
 use InWeb\Base\Traits\Translatable;
+use InWeb\Base\Traits\WithUID;
 use InWeb\Media\Images\WithImages;
 use Spatie\EloquentSortable\Sortable;
 use Symfony\Component\Process\Process;
@@ -26,19 +28,21 @@ class ModelCommand extends Command
      * @var string
      */
     protected $signature = 'imake:model {name} 
-                                        {--f|fields=* : Use + before name to make field translatable} 
+                                        {--f|field=*} 
+                                        {--F|tfield=*} 
                                         {--t|translatable} 
                                         {--s|sluggable}
                                         {--i|images} 
                                         {--p|positionable} 
-                                        {--c|cacheable}';
+                                        {--c|cacheable}
+                                        {--m|migration}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = "Create a base entity\nUse + in field lists to ";
+    protected $description = "Create a base entity";
 
     /**
      * @var array
@@ -73,6 +77,10 @@ class ModelCommand extends Command
      * @var array
      */
     private $translatableFields = [];
+    /**
+     * @var array
+     */
+    private $casts = [];
 
     /**
      * Execute the console command.
@@ -100,6 +108,8 @@ class ModelCommand extends Command
         $this->makeTranslatable();
         $this->makeCacheable();
         $this->makePositionable();
+        $this->makeUID();
+        $this->makeStatus();
         $this->makeMigration();
 
         // Entity.php replacements...
@@ -112,10 +122,10 @@ class ModelCommand extends Command
         $this->replace('{{ interfaces }}', $this->getInterfaces(), $file);
         $this->replace('{{ traits }}', $this->getTraits(), $file);
         $this->replace('{{ use }}', $this->formatUse(), $file);
+        $this->replace('{{ casts }}', $this->getCasts(), $file);
 
         $this->replace('{{ translation_class }}', $this->translationsNamespace() . '\\' . $this->translationClass(), $file);
         $this->replace('{{ translatable_fields }}', $this->getTranslatableFields(), $file);
-
 
         // Rename the stubs with the proper file extensions...
         $this->renameStubs();
@@ -131,6 +141,7 @@ class ModelCommand extends Command
         return [
             $this->modelsPath() . '/' . $this->modelClass() . '.stub',
             $this->translationsPath() . '/' . $this->translationClass() . '.stub',
+            $this->migrationsPath() . '/' . $this->migrationName() . '.stub',
         ];
     }
 
@@ -259,7 +270,9 @@ class ModelCommand extends Command
      */
     protected function getTranslatableFields()
     {
-        return implode(', ', array_map(function($value) { return "'" . $value . "'"; }, $this->translatableFields));
+        return implode(', ', array_map(function ($value) {
+            return "'" . $value . "'";
+        }, $this->translatableFields));
     }
 
     /**
@@ -375,6 +388,7 @@ class ModelCommand extends Command
         if (! $this->option('positionable'))
             return;
 
+        $this->fields[] = 'position';
         $this->interfaces[] = $this->use(Sortable::class);
         $this->traits[] = $this->use(Positionable::class);
     }
@@ -428,7 +442,27 @@ class ModelCommand extends Command
 
     private function makeMigration()
     {
-        // @todo
+        if (! $this->option('migration'))
+            return;
+
+        $fileName = $this->migrationName();
+
+        (new Filesystem)->copy(
+            __DIR__ . '/stubs/migrations/entity.stub',
+            $file = $this->migrationsPath() . '/' . $fileName . '.stub'
+        );
+
+        $this->replace('{{ translation_table_schema }}', (new Filesystem())->get(__DIR__ . '/stubs/migrations/entity_translatable.stub'), $file);
+
+        $this->replace('{{ drop_translation }}', 'Schema::dropIfExists(\'{{ translation_table }}\');' . "\n        ", $file);
+
+        $this->replace('{{ table }}', $this->tableName(), $file);
+        $this->replace('{{ translation_table }}', $this->translationTable(), $file);
+        $this->replace('{{ foreign_key }}', $this->modelName() . '_id', $file);
+        $this->replace('{{ fields }}', $this->migrationFields(), $file);
+        $this->replace('{{ translatable_fields }}', $this->migrationTranslatableFields(), $file);
+
+        $this->replace('{{ class }}', $this->migrationClass(), $file);
     }
 
     private function fieldExists(string $value)
@@ -443,15 +477,121 @@ class ModelCommand extends Command
 
     private function initFields()
     {
-        $fields = $this->option('fields') ?: [];
+        $this->fields = $this->option('field') ?: [];
+        $this->translatableFields = $this->option('tfield') ?: [];
+    }
 
-        foreach ($fields as $field) {
-            $fieldName = str_replace('+', '', $field);
-
-            if (strpos($field, '+') === 0)
-                $this->translatableFields[] = $fieldName;
-            else
-                $this->fields[] = $fieldName;
+    private function makeUID()
+    {
+        if ($this->fieldExists('uid')) {
+            $this->traits[] = $this->use(WithUID::class);
         }
+    }
+
+    private function makeStatus()
+    {
+        if ($this->fieldExists('status')) {
+            $this->traits[] = $this->use(WithStatus::class);
+            $this->casts['status'] = 'boolean';
+        }
+    }
+
+    private function getCasts()
+    {
+        $casts = '';
+
+        if (! count($this->casts))
+            return '';
+
+        foreach ($this->casts as $field => $type) {
+            $casts .= "\n       '$field' => '$type',";
+        }
+
+        return "\n\n    protected \$casts = [" . $casts . "
+    ];";
+    }
+
+    private function migrationsPath()
+    {
+        return database_path('migrations');
+    }
+
+    private function tableName()
+    {
+        return Str::plural($this->modelName());
+    }
+
+    private function translationTable()
+    {
+        return $this->modelName() . '_translation';
+    }
+
+    private function migrationName()
+    {
+        $class = $this->migrationClass();
+        return date('Y_m_d') . '_' . (time() - strtotime("today")) . '_' . Str::snake($class);
+    }
+
+    private function migrationClass()
+    {
+        return 'Create' . Str::studly($this->tableName()) . 'Table';
+    }
+
+    private function migrationFields()
+    {
+        $result = '';
+
+        foreach ($this->fields as $field) {
+            $result .= $this->buildMigrationField($field) . "\n            ";
+        }
+
+        return $result;
+    }
+
+    private function migrationTranslatableFields()
+    {
+        $result = '';
+
+        foreach ($this->translatableFields as $field) {
+            $result .= $this->buildMigrationField($field) . "\n            ";
+        }
+
+        return $result;
+    }
+
+    protected function buildMigrationField($field)
+    {
+        $options = [];
+        $type = 'string';
+
+        if ($field == 'uid') {
+            $options[] = 'nullable()';
+            $options[] = 'unique()';
+        }
+
+        if ($field == 'price' or $field == 'old_price') {
+            $options[] = 'nullable()';
+            $type = 'integer';
+        }
+
+        if ($field == 'text' or $field == 'description' or $field == 'description_min') {
+            $options[] = 'nullable()';
+            $type = 'text';
+        }
+
+        if (strpos($field, '_id') !== false) {
+            $options[] = 'nullable()';
+            $type = 'unsignedInteger';
+        }
+
+        if ($field == 'status') {
+            return '\InWeb\Base\Traits\WithStatus::statusColumn($table);';
+        }
+
+        if ($field == 'position') {
+            return '\InWeb\Base\Traits\Positionable::positionColumn($table);';
+        }
+
+        return '$table->' . $type . '(\'' . $field . '\')' . (count($options) ? '->' . implode('->', $options) : '') . ';';
     }
 }
