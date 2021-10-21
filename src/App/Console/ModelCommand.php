@@ -13,6 +13,7 @@ use InWeb\Base\Entity;
 use InWeb\Base\Traits\ClearsRelatedModelCache;
 use InWeb\Base\Traits\Positionable;
 use InWeb\Base\Traits\Translatable;
+use InWeb\Base\Traits\WithStatus;
 use InWeb\Base\Traits\WithUID;
 use InWeb\Media\Images\WithImages;
 use Spatie\EloquentSortable\Sortable;
