@@ -524,7 +524,7 @@ class ModelCommand extends Command
 
     private function translationTable()
     {
-        return $this->modelName() . '_translation';
+        return $this->modelName() . '_translations';
     }
 
     private function migrationName()

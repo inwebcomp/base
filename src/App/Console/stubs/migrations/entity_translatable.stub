@@ -1,5 +1,5 @@
         Schema::create('{{ translation_table }}', function (Blueprint $table) {
-            $table->unsignedBigInteger('id');
+            $table->id();
             $table->unsignedBigInteger('{{ foreign_key }}');
             $table->string('locale')->index();
 
