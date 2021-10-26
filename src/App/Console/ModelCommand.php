@@ -586,11 +586,11 @@ class ModelCommand extends Command
         }
 
         if ($field == 'status') {
-            return '\InWeb\Base\Traits\WithStatus::statusColumn($table);';
+            return '\\' . $this->modelNamespace() . '::statusColumn($table);';
         }
 
         if ($field == 'position') {
-            return '\InWeb\Base\Traits\Positionable::positionColumn($table);';
+            return '\\' . $this->modelNamespace() . '::positionColumn($table);';
         }
 
         return '$table->' . $type . '(\'' . $field . '\')' . (count($options) ? '->' . implode('->', $options) : '') . ';';
