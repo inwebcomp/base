@@ -139,11 +139,17 @@ class ModelCommand extends Command
      */
     protected function stubsToRename()
     {
-        return [
+        $files = [
             $this->modelsPath() . '/' . $this->modelClass() . '.stub',
-            $this->translationsPath() . '/' . $this->translationClass() . '.stub',
-            $this->migrationsPath() . '/' . $this->migrationName() . '.stub',
         ];
+
+        if ($this->option('translatable'))
+            $files[] = $this->translationsPath() . '/' . $this->translationClass() . '.stub';
+
+        if ($this->option('migration'))
+            $files[] = $this->migrationsPath() . '/' . $this->migrationName() . '.stub';
+
+        return $files;
     }
 
     /**
@@ -226,7 +232,7 @@ class ModelCommand extends Command
      */
     protected function modelNamespace()
     {
-        return Str::studly(str_replace('/', '\\', $this->modelsPath())) . $this->modelClass();
+        return Str::studly(str_replace('/', '\\', $this->relativeModelsPath())) . '\\' . $this->modelClass();
     }
 
     /**
