@@ -591,6 +591,11 @@ class ModelCommand extends Command
             $type = 'unsignedInteger';
         }
 
+        if (strpos($field, 'is_') !== false) {
+            $options[] = 'default(false)';
+            $type = 'boolean';
+        }
+
         if ($field == 'status') {
             return '\\' . $this->modelNamespace() . '::statusColumn($table);';
         }
