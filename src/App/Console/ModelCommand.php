@@ -486,6 +486,12 @@ class ModelCommand extends Command
     {
         $this->fields = $this->option('field') ?: [];
         $this->translatableFields = $this->option('tfield') ?: [];
+
+        foreach ($this->fields as $field) {
+            if (strpos($field, 'is_') !== false) {
+                $casts[$field] = 'boolean';
+            }
+        }
     }
 
     private function makeUID()
