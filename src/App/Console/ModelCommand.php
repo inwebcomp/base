@@ -2,7 +2,6 @@
 
 namespace InWeb\Base\Console;
 
-use App\Models\Navigation;
 use Cviebrock\EloquentSluggable\Sluggable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;

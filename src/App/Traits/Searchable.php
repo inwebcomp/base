@@ -76,7 +76,7 @@ trait Searchable
 
         $translationTableName = $this->getTranslationsTable();
 
-        $values = \DB::select(
+        $values = static::query()->getConnection()->select(
             'SELECT pt.' . $this->getForeignKey() . ',
                 MATCH(pt.' . $this->fulltextSearchColumn() . ') AGAINST (? IN BOOLEAN MODE) as relevance
                 FROM `' . $translationTableName . '` pt WHERE MATCH(pt.title) AGAINST (? IN BOOLEAN MODE) ORDER BY relevance DESC',
@@ -93,10 +93,10 @@ trait Searchable
         if (! count($ids))
             $ids = [-1];
 
-        $query->whereIn($this->getModel()->getKeyName(), $ids);
+        $query->whereIn($this->getTable() . '.' . $this->getKeyName(), $ids);
 
         if ($order)
-            $query->orderByRaw("FIELD(" . $this->getTable() . ".id, " . implode(',', $ids) . ") ASC");
+            $query->orderByRaw("FIELD(" . $this->getTable() . "." . $this->getKeyName() . ", " . implode(',', $ids) . ") ASC");
     }
 
     public function applySearchLike(Builder $query, $search, $order = true)
@@ -156,7 +156,6 @@ trait Searchable
         $order .= ' )';
 
         $newQuery->orderByRaw($order . ' DESC');
-
         $ids = $newQuery->pluck($this->getTable() . '.' . $this->getKeyName())->toArray();
 
         $ids = array_unique($ids);
@@ -164,7 +163,7 @@ trait Searchable
         if (! count($ids))
             $ids = [-1];
 
-        $query->whereIn($this->getModel()->getKeyName(), $ids);
+        $query->whereIn($this->getTable() . '.' . $this->getKeyName(), $ids);
 
         if ($order)
             $query->orderByRaw("FIELD(" . $this->getTable() . ".id, " . implode(',', $ids) . ") ASC");
