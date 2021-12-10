@@ -7,13 +7,13 @@ use InWeb\Base\Entity;
 
 class Route
 {
-    public static function localized($path, $locale = null)
+    public static function localized($path, $locale = null): string
     {
         $locale = $locale ?? App::getLocale();
         return ($locale == config('inweb.default_language') ? '' : '/' . $locale) . '/' . (trim($path ?? '', '/'));
     }
 
-    public static function otherLocale($locale = null)
+    public static function otherLocale($locale = null): string
     {
         $locale = $locale ?? App::getLocale();
 
@@ -27,12 +27,12 @@ class Route
         return optional($entity->getTranslation(self::otherLocale($locale)))->slug;
     }
 
-    public static function pathLocale()
+    public static function pathLocale(): ?string
     {
         return App::getLocale() == 'ru' ? null : App::getLocale();
     }
 
-    public static function route(...$args)
+    public static function route(...$args): string
     {
         if (count($args))
             array_splice($args, 1, 0, static::pathLocale());

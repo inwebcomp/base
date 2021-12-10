@@ -1,12 +1,13 @@
 <?php
 
-namespace InWeb\Base\Console;
+namespace InWeb\Base\Console\Commands;
 
 use Cviebrock\EloquentSluggable\Sluggable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use InWeb\Base\Console\RenamesStubs;
 use InWeb\Base\Contracts\Cacheable;
 use InWeb\Base\Entity;
 use InWeb\Base\Traits\ClearsRelatedModelCache;
@@ -27,13 +28,13 @@ class ModelCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'imake:model {name} 
-                                        {--f|field=*} 
-                                        {--F|tfield=*} 
-                                        {--t|translatable} 
+    protected $signature = 'imake:model {name}
+                                        {--f|field=*}
+                                        {--F|tfield=*}
+                                        {--t|translatable}
                                         {--s|sluggable}
-                                        {--i|images} 
-                                        {--p|positionable} 
+                                        {--i|images}
+                                        {--p|positionable}
                                         {--c|cacheable}
                                         {--m|migration}';
 
