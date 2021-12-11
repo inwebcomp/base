@@ -97,7 +97,7 @@ class ModelCommand extends Command
         $file = $this->modelsPath() . '/' . $this->modelClass() . '.stub';
 
         (new Filesystem)->copy(
-            __DIR__ . '/stubs/Entity.stub',
+            $this->stubsPath('Entity.stub'),
             $file
         );
 
@@ -387,7 +387,7 @@ class ModelCommand extends Command
         $this->use(Cache::class);
 
         $filesystem = new Filesystem();
-        $this->body .= "\n\n" . $filesystem->get(__DIR__ . '/stubs/blocks/cacheable.stub');
+        $this->body .= "\n\n" . $filesystem->get($this->stubsPath('blocks/cacheable.stub'));
     }
 
     private function makePositionable()
@@ -418,10 +418,10 @@ class ModelCommand extends Command
         $this->traits[] = $this->use(Translatable::class);
 
         $filesystem = new Filesystem();
-        $this->body .= "\n\n" . $filesystem->get(__DIR__ . '/stubs/blocks/translatable.stub');
+        $this->body .= "\n\n" . $filesystem->get($this->stubsPath('blocks/translatable.stub'));
 
         (new Filesystem)->copy(
-            $file = __DIR__ . '/stubs/EntityTranslation.stub',
+            $file = $this->stubsPath('EntityTranslation.stub'),
             $file = $this->translationsPath() . '/' . $this->translationClass() . '.stub'
         );
 
@@ -431,7 +431,7 @@ class ModelCommand extends Command
         if ($this->option('sluggable')) {
             if ($this->isTranslatableField('slug') and $this->isTranslatableField('title')) {
                 $this->translatableTraits[] = '\\' . Sluggable::class;
-                $body .= "\n" . $filesystem->get(__DIR__ . '/stubs/blocks/sluggable.stub') . "\n";
+                $body .= "\n" . $filesystem->get($this->stubsPath('blocks/sluggable.stub')) . "\n";
             }
         }
 
@@ -455,11 +455,11 @@ class ModelCommand extends Command
         $fileName = $this->migrationName();
 
         (new Filesystem)->copy(
-            __DIR__ . '/stubs/migrations/entity.stub',
+            $this->stubsPath('migrations/entity.stub'),
             $file = $this->migrationsPath() . '/' . $fileName . '.stub'
         );
 
-        $this->replace('{{ translation_table_schema }}', (new Filesystem())->get(__DIR__ . '/stubs/migrations/entity_translatable.stub'), $file);
+        $this->replace('{{ translation_table_schema }}', (new Filesystem())->get($this->stubsPath('migrations/entity_translatable.stub')), $file);
 
         $this->replace('{{ drop_translation }}', 'Schema::dropIfExists(\'{{ translation_table }}\');' . "\n        ", $file);
 
@@ -611,5 +611,10 @@ class ModelCommand extends Command
         }
 
         return '$table->' . $type . '(\'' . $field . '\')' . (count($options) ? '->' . implode('->', $options) : '') . ';';
+    }
+
+    public function stubsPath($path = ''): string
+    {
+        return __DIR__ . '/../stubs/' . ltrim($path, '/');
     }
 }
