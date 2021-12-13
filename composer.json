@@ -20,7 +20,7 @@
         }
     ],
     "require": {
-        "php": "^7.0|^8.0",
+        "php": "^7.0|^8.1",
         "spatie/once": "3.0.1",
         "cviebrock/eloquent-sluggable": "^7.0|^8.0",
         "astrotomic/laravel-translatable": "^11.0",

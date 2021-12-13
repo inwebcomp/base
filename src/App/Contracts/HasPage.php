@@ -4,5 +4,5 @@ namespace InWeb\Base\Contracts;
 
 interface HasPage
 {
-    public function path();
+    public function path(): string;
 }

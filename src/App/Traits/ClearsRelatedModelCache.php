@@ -3,6 +3,7 @@
 namespace InWeb\Base\Traits;
 
 use InWeb\Base\Contracts\Cacheable;
+use InWeb\Base\Entity;
 
 trait ClearsRelatedModelCache
 {
@@ -35,9 +36,11 @@ trait ClearsRelatedModelCache
             static::getMainClass()::clearCache();
     }
 
+    /**
+     * @return string|Entity|ClearsCache
+     */
     public static function getMainClass()
     {
-        $class = str_replace(['Translations', 'Translation'], ['Models', ''], static::class);
-        return $class;
+        return str_replace(['Translations', 'Translation'], ['Models', ''], static::class);
     }
 }
