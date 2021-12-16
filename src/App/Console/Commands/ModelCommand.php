@@ -200,6 +200,8 @@ class ModelCommand extends Command
             'title_single',
             'name',
             'last_name',
+            'price',
+            'price_old',
             'created_at',
             'updated_at',
             'page_id',
@@ -234,6 +236,8 @@ class ModelCommand extends Command
             'title_single',
             'name',
             'last_name',
+            'price',
+            'price_old',
             'page_id',
             'category_id',
             'link',
@@ -310,6 +314,8 @@ class ModelCommand extends Command
             'page_id'         => 'Страница',
             'parent_id'       => 'Родитель',
             'category_Id'     => 'Категория',
+            'price'           => 'Цена',
+            'price_old'       => 'Старая цена',
         ];
 
         if (!$translate)
@@ -318,14 +324,14 @@ class ModelCommand extends Command
         $generatedData = [];
 
         foreach ($availableFields as $field) {
-            $fieldTitle = $titleMap[$field] ?? Str::plural($field);
+            $fieldTitle = $titleMap[$field] ?? Str::headline($field);
 
             $defaultType = $types[0];
 
             if ($field == 'position' and $this->option('positionable'))
                 continue;
 
-            if ($field == 'count' or $field == 'number' or $field == 'position' or str_ends_with('_number', $field) or str_ends_with('_count', $field))
+            if ($field == 'count' or $field == 'number' or $field == 'position' or str_starts_with('price', $field) or str_ends_with('_number', $field) or str_ends_with('_count', $field))
                 $defaultType = $types[2];
             if ($field == 'status' or str_starts_with('is_', $field))
                 $defaultType = $types[3];
@@ -353,6 +359,10 @@ class ModelCommand extends Command
                 $result .= "->fastEditBoolean()";
             }
 
+            if ($field == 'status') {
+                $result .= "->default(true)";
+            }
+
             if ($field == 'index_image') {
                 $this->adminUse('\InWeb\Admin\App\Fields\Image');
                 $result = "Image::make('')->preview(function (\$value, \$model) {
@@ -372,7 +382,7 @@ class ModelCommand extends Command
             $fields['?images'] = "(new Images())";
         }
 
-        $showFieldList = function($fields) {
+        $showFieldList = function ($fields) {
             $this->table(['Field', 'Code'], collect($fields)->map(function ($result, $field) {
                 return [$field, $result];
             }));
@@ -383,7 +393,7 @@ class ModelCommand extends Command
 
             $field = $this->askWithCompletion("Enter field to configure: (leave empty to continue)", $fields, '');
 
-            if (! $field)
+            if (!$field)
                 break;
 
             if (!isset($generatedData[$field]) or str_starts_with('?', $field)) {
@@ -675,7 +685,7 @@ class ModelCommand extends Command
     {
         $tmp = explode('\\', $class);
 
-        if (! in_array($class, $this->use))
+        if (!in_array($class, $this->use))
             $this->use[] = $class;
 
         return end($tmp);
@@ -685,7 +695,7 @@ class ModelCommand extends Command
     {
         $tmp = explode('\\', $class);
 
-        if (! in_array($class, $this->adminUse))
+        if (!in_array($class, $this->adminUse))
             $this->adminUse[] = $class;
 
         return end($tmp);
