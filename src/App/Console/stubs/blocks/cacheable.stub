@@ -1,33 +1,9 @@
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::updated(function (Cacheable $model) {
-            static::clearCache($model);
-        });
-        static::deleted(function (Cacheable $model) {
-            static::clearCache($model);
-        });
-        static::created(function () {
-            static::clearCache();
-        });
-    }
-
-    public static function clearCache(Cacheable $model = null)
-    {
-        Cache::tags(self::cacheTagAll())->flush();
-
-        if ($model) {
-            Cache::tags($model->cacheTag())->flush();
-        }
-    }
-
-    public static function cacheTagAll()
+    public static function cacheTagAll(): string
     {
         return '{{ name_plural }}';
     }
 
-    public function cacheTag()
+    public function cacheTag(): string
     {
         return '{{ name }}:' . $this->id;
     }

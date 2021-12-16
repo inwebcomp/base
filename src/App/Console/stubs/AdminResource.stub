@@ -1,0 +1,77 @@
+<?php
+
+namespace App\Admin\Resources;
+
+use Illuminate\Http\Request;
+use InWeb\Admin\App\Http\Requests\AdminRequest;
+use InWeb\Admin\App\Resources\Resource;
+use InWeb\Admin\App\ResourceTools\ActionsOnModel;
+use InWeb\Admin\App\Filters\OnPage;
+{{ use }}
+
+class {{ class }} extends Resource
+{
+    public static $model = {{ model_class }}::class;
+
+    public static function label(): string
+    {
+        return __('{{ label }}');
+    }
+
+    public static function singularLabel(): string
+    {
+        return __('{{ singular_label }}');
+    }
+
+    public static function uriKey(): string
+    {
+        return '{{ uri_key }}';
+    }
+
+    public function title(): string
+    {
+        return $this->title;
+    }
+
+    /**
+     * Get the fields displayed by the resource.
+     *
+     * @param AdminRequest $request
+     * @return array
+     */
+    public function fields(AdminRequest $request): array
+    {
+        return [
+            {{ index_fields }}
+        ];
+    }
+
+    /**
+     * Get the fields displayed by the resource.
+     *
+     * @param AdminRequest $request
+     * @return array
+     */
+    public function detailFields(AdminRequest $request): array
+    {
+        return [
+            {{ detail_fields }}
+
+            new ActionsOnModel(),
+        ];
+    }
+
+    public function actions(Request $request): array
+    {
+        return [
+            {{ actions }}
+        ];
+    }
+
+    public function filters(Request $request): array
+    {
+        return [
+            new OnPage(20),
+        ];
+    }
+}

@@ -1,4 +1,4 @@
-    public $translationModel     = '{{ translation_class }}';
-    public $translatedAttributes = [
+    public string $translationModel     = '{{ translation_class }}';
+    public array  $translatedAttributes = [
         {{ translatable_fields }}
     ];

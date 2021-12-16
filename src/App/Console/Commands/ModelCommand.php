@@ -10,6 +10,7 @@ use Illuminate\Filesystem\Filesystem;
 use InWeb\Base\Console\RenamesStubs;
 use InWeb\Base\Contracts\Cacheable;
 use InWeb\Base\Entity;
+use InWeb\Base\Traits\ClearsCache;
 use InWeb\Base\Traits\ClearsRelatedModelCache;
 use InWeb\Base\Traits\Positionable;
 use InWeb\Base\Traits\Translatable;
@@ -36,7 +37,8 @@ class ModelCommand extends Command
                                         {--i|images}
                                         {--p|positionable}
                                         {--c|cacheable}
-                                        {--m|migration}';
+                                        {--m|migration}
+                                        {--a|admin}';
 
     /**
      * The console command description.
@@ -49,6 +51,10 @@ class ModelCommand extends Command
      * @var array
      */
     protected $use = [];
+    /**
+     * @var array
+     */
+    protected $adminUse = [];
     /**
      * @var array
      */
@@ -90,7 +96,7 @@ class ModelCommand extends Command
      */
     public function handle()
     {
-        if (! $this->hasValidNameArgument()) {
+        if (!$this->hasValidNameArgument()) {
             return;
         }
 
@@ -128,8 +134,290 @@ class ModelCommand extends Command
         $this->replace('{{ translation_class }}', $this->translationsNamespace() . '\\' . $this->translationClass(), $file);
         $this->replace('{{ translatable_fields }}', $this->getTranslatableFields(), $file);
 
+        $createAdmin = $this->option('admin');
+
+        if (!$createAdmin) {
+            $createAdmin = $this->ask("Should also create Admin Resource class?");
+        }
+
+        if ($createAdmin)
+            $this->makeAdmin();
+
         // Rename the stubs with the proper file extensions...
         $this->renameStubs();
+    }
+
+    public function makeAdmin()
+    {
+        $file = $this->adminPath() . '/Resources/' . $this->modelClass() . '.stub';
+
+        (new Filesystem)->copy(
+            $this->stubsPath('AdminResource.stub'),
+            $file
+        );
+
+        $this->addStubToRename($file);
+
+        $this->replace('{{ class }}', $this->modelClass(), $file);
+        $this->replace('{{ model_class }}', '\\' . $this->modelNamespace(), $file);
+
+        $label = $this->ask('Enter label for Admin Resource', Str::plural($this->modelClass()));
+        $this->replace('{{ label }}', $label, $file);
+
+        $singular_label = $this->ask('Enter singular label for Admin Resource', $this->modelClass());
+        $this->replace('{{ singular_label }}', $singular_label, $file);
+
+        $this->replace('{{ uri_key }}', $this->uriKey(), $file);
+
+        $this->replace('{{ actions }}', $this->formatAdminActions(), $file);
+
+        $translate = $this->confirm("Translate field titles to russian?", true);
+
+        $this->getOutput()->section("Configure index fields");
+        $this->replace('{{ index_fields }}', $this->formatAdminFields($this->getAdminIndexFields(), $translate), $file);
+
+        $this->getOutput()->section("Configure detail fields");
+        $this->replace('{{ detail_fields }}', $this->formatAdminFields($this->getAdminDetailFields(), $translate), $file);
+
+        $this->replace('{{ use }}', $this->formatAdminUse(), $file);
+    }
+
+    public function getAllFields()
+    {
+        return [
+            ...$this->fields,
+            ...$this->translatableFields,
+        ];
+    }
+
+    public function getAdminIndexFields()
+    {
+        $fields = $this->getAllFields();
+
+        $order = [
+            'index_image',
+            'title',
+            'title_single',
+            'name',
+            'last_name',
+            'created_at',
+            'updated_at',
+            'page_id',
+            'category_id',
+            'link',
+            'status',
+        ];
+
+        $result = [];
+        $useFields = collect($fields)->flip()->only($order);
+
+        if ($this->option('images'))
+            $useFields->offsetSet('index_image', -1);
+
+        foreach ($order as $field) {
+            if (!isset($useFields[$field]))
+                continue;
+
+            $result[] = $field;
+        }
+
+        return $result;
+    }
+
+    public function getAdminDetailFields()
+    {
+        $fields = collect($this->getAllFields());
+
+        $useFields = $fields->flip()->only($order = [
+            'title',
+            'slug',
+            'title_single',
+            'name',
+            'last_name',
+            'page_id',
+            'category_id',
+            'link',
+            'description',
+            'description_min',
+            'text',
+            'created_at',
+            'updated_at',
+            'status',
+        ])->keys()->flip();
+
+        $result = [];
+        foreach ($order as $field) {
+            if (!isset($useFields[$field]))
+                continue;
+
+            $result[] = $field;
+        }
+
+        foreach ($fields->flip()->except($order)->keys() as $field) {
+            $result[] = $field;
+        }
+
+        return $result;
+    }
+
+    public function formatAdminActions()
+    {
+        $actions = [];
+
+        if ($this->fieldExists('status')) {
+            $actions[] = '(new ' . $this->adminUse('\InWeb\Admin\App\Actions\Publish') . '())';
+            $actions[] = '(new ' . $this->adminUse('\InWeb\Admin\App\Actions\Hide') . '())';
+        }
+
+        if ($this->option('images')) {
+            $actions[] = '(new ' . $this->adminUse('\Admin\ResourceTools\Images\Actions\RecreateThumbnails') . '())';
+        }
+
+        return implode(",
+            ", $actions) . (count($actions) ? ',' : '');
+    }
+
+    public function formatAdminFields($availableFields, $translate = true)
+    {
+        $fields = [];
+
+        $types = [
+            0 => '\InWeb\Admin\App\Fields\Text',
+            1 => '\InWeb\Admin\App\Fields\Textarea',
+            2 => '\InWeb\Admin\App\Fields\Number',
+            3 => '\InWeb\Admin\App\Fields\Boolean',
+            4 => '\InWeb\Admin\App\Fields\Date',
+            5 => '\InWeb\Admin\App\Fields\Datetime',
+            6 => '\InWeb\Admin\App\Fields\Select',
+            7 => '\InWeb\Admin\App\Fields\Editor',
+            8 => '\InWeb\Admin\App\Fields\TreeField',
+            9 => '\InWeb\Admin\App\Fields\Image',
+        ];
+
+        $titleMap = [
+            'title'           => 'Заголовок',
+            'title_single'    => 'В ед. числе',
+            'name'            => 'Имя',
+            'last_name'       => 'Фамилия',
+            'slug'            => 'URL ID',
+            'status'          => 'Опубликован',
+            'description'     => 'Описание',
+            'description_min' => 'Краткое описание',
+            'text'            => 'Текст',
+            'created_at'      => 'Создан',
+            'updated_at'      => 'Изменён',
+            'link'            => 'Ссылка',
+            'page_id'         => 'Страница',
+            'parent_id'       => 'Родитель',
+            'category_Id'     => 'Категория',
+        ];
+
+        if (!$translate)
+            $titleMap = [];
+
+        $generatedData = [];
+
+        foreach ($availableFields as $field) {
+            $fieldTitle = $titleMap[$field] ?? Str::plural($field);
+
+            $defaultType = $types[0];
+
+            if ($field == 'position' and $this->option('positionable'))
+                continue;
+
+            if ($field == 'count' or $field == 'number' or $field == 'position' or str_ends_with('_number', $field) or str_ends_with('_count', $field))
+                $defaultType = $types[2];
+            if ($field == 'status' or str_starts_with('is_', $field))
+                $defaultType = $types[3];
+            if ($field == 'description' or $field == 'description_min')
+                $defaultType = $types[1];
+            if ($field == 'text')
+                $defaultType = $types[7];
+            if (str_ends_with('_at', $field) or str_ends_with('_date', $field) or str_starts_with('date_', $field))
+                $defaultType = $types[5];
+            if (str_ends_with('_id', $field))
+                $defaultType = $types[6];
+
+//            $this->line('Configure field: <fg=yellow;>' . $field . '</>');
+            $type = $defaultType;
+//            $type = $this->choice("Type: ", $types, $defaultType);
+
+            $result = $this->adminUse($type) .
+                "::make(__('$fieldTitle'), '$field')";
+
+            if ($field == 'title') {
+                $result .= "->link(\$this->editPath())";
+            }
+
+            if ($type == $types[3]) {
+                $result .= "->fastEditBoolean()";
+            }
+
+            if ($field == 'index_image') {
+                $this->adminUse('\InWeb\Admin\App\Fields\Image');
+                $result = "Image::make('')->preview(function (\$value, \$model) {
+                return optional(\$model->image)->getUrl();
+            })";
+            }
+
+            $fields[$field] = $result;
+            $generatedData[$field] = [
+                'type'  => $type,
+                'title' => $fieldTitle,
+            ];
+        }
+
+        if ($this->option('images') and !in_array('index_image', $availableFields)) {
+            $this->adminUse('\Admin\ResourceTools\Images\Images');
+            $fields['?images'] = "(new Images())";
+        }
+
+        $showFieldList = function($fields) {
+            $this->table(['Field', 'Code'], collect($fields)->map(function ($result, $field) {
+                return [$field, $result];
+            }));
+        };
+
+        while (true) {
+            $showFieldList($fields);
+
+            $field = $this->askWithCompletion("Enter field to configure: (leave empty to continue)", $fields, '');
+
+            if (! $field)
+                break;
+
+            if (!isset($generatedData[$field]) or str_starts_with('?', $field)) {
+                $this->warn('The is no field with name: ' . $field);
+                continue;
+            }
+
+            $data = $generatedData[$field];
+
+            $fieldTitle = $this->ask("Change Title: ", $data['title']);
+            $type = $this->choice("Change Type: ", $types, $data['type']);
+
+            $result = $this->adminUse($type) .
+                "::make(__('$fieldTitle'), '$field')";
+
+            if ($field == 'title') {
+                $result .= "->link(\$this->editPath())";
+            }
+
+            if ($type == $types[3]) {
+                $result .= "->fastEditBoolean()";
+            }
+
+            $fields[$field] = $result;
+            $generatedData[$field] = [
+                'type'  => $type,
+                'title' => $fieldTitle,
+            ];
+
+            $this->getOutput()->success('Field updated');
+        }
+
+        return implode(",
+            ", $fields) . (count($fields) ? ',' : '');
     }
 
     /**
@@ -141,6 +429,7 @@ class ModelCommand extends Command
     {
         $files = [
             $this->modelsPath() . '/' . $this->modelClass() . '.stub',
+            ...$this->stubsToRename,
         ];
 
         if ($this->option('translatable'))
@@ -203,6 +492,16 @@ class ModelCommand extends Command
     protected function relativeModelsPath()
     {
         return 'app/Models';
+    }
+
+    /**
+     * Get the path to the tool.
+     *
+     * @return string
+     */
+    protected function adminPath()
+    {
+        return base_path('app/Admin');
     }
 
     /**
@@ -307,6 +606,16 @@ class ModelCommand extends Command
         return Str::snake($this->argument('name'));
     }
 
+    /**
+     * Get the tool's base name.
+     *
+     * @return string
+     */
+    protected function uriKey()
+    {
+        return Str::snake($this->argument('name'), '-');
+    }
+
     private function hasValidNameArgument()
     {
         return $this->argument('name');
@@ -314,7 +623,7 @@ class ModelCommand extends Command
 
     private function getInterfaces()
     {
-        if (! count($this->interfaces))
+        if (!count($this->interfaces))
             return '';
 
         return 'implements ' . implode(", ", $this->interfaces);
@@ -322,7 +631,7 @@ class ModelCommand extends Command
 
     private function getTraits()
     {
-        if (! count($this->traits))
+        if (!count($this->traits))
             return '';
 
         $result = 'use ';
@@ -341,7 +650,7 @@ class ModelCommand extends Command
 
     private function getTranslatableTraits()
     {
-        if (! count($this->translatableTraits))
+        if (!count($this->translatableTraits))
             return '';
 
         $result = 'use ';
@@ -362,7 +671,18 @@ class ModelCommand extends Command
     {
         $tmp = explode('\\', $class);
 
-        $this->use[] = $class;
+        if (! in_array($class, $this->use))
+            $this->use[] = $class;
+
+        return end($tmp);
+    }
+
+    private function adminUse($class)
+    {
+        $tmp = explode('\\', $class);
+
+        if (! in_array($class, $this->adminUse))
+            $this->adminUse[] = $class;
 
         return end($tmp);
     }
@@ -378,12 +698,25 @@ class ModelCommand extends Command
         return $result;
     }
 
+    private function formatAdminUse()
+    {
+        $result = '';
+
+        foreach ($this->adminUse as $class) {
+            $result .= 'use ' . $class . ";\n";
+        }
+
+        return $result;
+    }
+
     private function makeCacheable()
     {
-        if (! $this->option('cacheable'))
+        if (!$this->option('cacheable'))
             return;
 
         $this->interfaces[] = $this->use(Cacheable::class);
+        $this->traits[] = $this->use(ClearsCache::class);
+
         $this->use(Cache::class);
 
         $filesystem = new Filesystem();
@@ -392,7 +725,7 @@ class ModelCommand extends Command
 
     private function makePositionable()
     {
-        if (! $this->option('positionable'))
+        if (!$this->option('positionable'))
             return;
 
         $this->fields[] = 'position';
@@ -402,7 +735,7 @@ class ModelCommand extends Command
 
     private function makeImages()
     {
-        if (! $this->option('images'))
+        if (!$this->option('images'))
             return;
 
         $this->traits[] = $this->use(WithImages::class);
@@ -412,7 +745,7 @@ class ModelCommand extends Command
 
     private function makeTranslatable()
     {
-        if (! $this->option('translatable'))
+        if (!$this->option('translatable'))
             return;
 
         $this->traits[] = $this->use(Translatable::class);
@@ -449,7 +782,7 @@ class ModelCommand extends Command
 
     private function makeMigration()
     {
-        if (! $this->option('migration'))
+        if (!$this->option('migration'))
             return;
 
         $fileName = $this->migrationName();
@@ -513,7 +846,7 @@ class ModelCommand extends Command
     {
         $casts = '';
 
-        if (! count($this->casts))
+        if (!count($this->casts))
             return '';
 
         foreach ($this->casts as $field => $type) {
@@ -541,8 +874,10 @@ class ModelCommand extends Command
 
     private function migrationName()
     {
-        $class = $this->migrationClass();
-        return date('Y_m_d') . '_' . (time() - strtotime("today")) . '_' . Str::snake($class);
+        return Cache::driver('array')->rememberForever('imake:model:migration', function () {
+            $class = $this->migrationClass();
+            return date('Y_m_d') . '_' . (time() - strtotime("today")) . '_' . Str::snake($class);
+        });
     }
 
     private function migrationClass()
