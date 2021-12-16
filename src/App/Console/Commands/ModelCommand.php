@@ -407,6 +407,10 @@ class ModelCommand extends Command
                 $result .= "->fastEditBoolean()";
             }
 
+            if ($field == 'status') {
+                $result .= "->default(true)";
+            }
+
             $fields[$field] = $result;
             $generatedData[$field] = [
                 'type'  => $type,
