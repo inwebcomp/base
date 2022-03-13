@@ -81,7 +81,7 @@ trait Searchable
         $keyColumn = $translated ? $this->getForeignKey() : $this->getKeyName();
 
         $values = static::query()->getConnection()->select(
-            'SELECT pt.' . $keyColumn . ',
+            'SELECT pt.' . $keyColumn . ' as id,
                 MATCH(pt.' . $column . ') AGAINST (? IN BOOLEAN MODE) as relevance
                 FROM `' . $tableName . '` pt WHERE MATCH(pt.' . $column . ') AGAINST (? IN BOOLEAN MODE) ORDER BY relevance DESC',
             [$searchQ, $searchQ]
@@ -90,7 +90,7 @@ trait Searchable
         $ids = [];
 
         foreach ($values as $value)
-            $ids[] = $value->product_id;
+            $ids[] = $value->id;
 
         $ids = array_unique($ids);
 
