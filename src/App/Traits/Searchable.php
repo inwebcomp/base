@@ -74,12 +74,16 @@ trait Searchable
                 $searchQ .= ">" . trim($word, '-') . "*";
         }
 
-        $translationTableName = $this->getTranslationsTable();
+        $column = $this->fulltextSearchColumn();
+
+        $translated = ($this->translatable() and $this->isTranslationAttribute($column));
+        $tableName = $translated ? $this->getTranslationsTable() : $this->getTable();
+        $keyColumn = $translated ? $this->getForeignKey() : $this->getKeyName();
 
         $values = static::query()->getConnection()->select(
-            'SELECT pt.' . $this->getForeignKey() . ',
-                MATCH(pt.' . $this->fulltextSearchColumn() . ') AGAINST (? IN BOOLEAN MODE) as relevance
-                FROM `' . $translationTableName . '` pt WHERE MATCH(pt.title) AGAINST (? IN BOOLEAN MODE) ORDER BY relevance DESC',
+            'SELECT pt.' . $keyColumn . ',
+                MATCH(pt.' . $column . ') AGAINST (? IN BOOLEAN MODE) as relevance
+                FROM `' . $tableName . '` pt WHERE MATCH(pt.' . $column . ') AGAINST (? IN BOOLEAN MODE) ORDER BY relevance DESC',
             [$searchQ, $searchQ]
         );
 
