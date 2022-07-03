@@ -9,10 +9,8 @@ use InWeb\Base\Entity;
 
 trait ClearsCache
 {
-    protected static function bootCacheable()
+    protected static function bootClearsCache()
     {
-        parent::boot();
-
         static::updated(function () {
             static::clearCache();
         });
