@@ -4,7 +4,8 @@
     "keywords": [
         "framework",
         "laravel",
-        "inweb"
+        "inweb",
+        "base"
     ],
     "license": "MIT",
     "authors": [
